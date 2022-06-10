@@ -131,28 +131,3 @@ copy it and reuse by adding the certs:
 ```bash
 curl --cert $CERT --key $KEY --cacert $CA_CERT -X GET  -H "Accept: application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json" 'https://127.0.0.1:61988/api/v1/namespaces/default/pods?limit=500' | jq
 ```
-
-
-
-~~~~~~~~
-
- curl -s -D - --verbose --key /Users/alessandro.argentieri/Desktop/work/projects/mtls/levine/servizi-geocallfs/servizi-geocallfs.key \
-     --cert /Users/alessandro.argentieri/Desktop/work/projects/mtls/levine/servizi-geocallfs.cer \
-     -X POST 'https://servizicollaudo.sky.it/hermes-st/residential/v0/orders/AM00000002203674/work-orders/1000006320/notify-update' \
-     -d '{"orderId": "AM00000002203674", "workOrderId": "1000006320", "status": "APERTO", "statusInfo": {"serviceCode": "CUDNORD", "companyNameService": "Centro Sky Udine Nord", "closingMode": "MOBILE"}}' \
-     -H 'Content-Type: application/json; charset=utf-8' \
-     -H 'sender-transaction-id: 1014551654865782941' \
-     -H 'sender: GeoCall' \
-     -H 'sender-transaction-datetime: 2022-06-10T14:56:22Z' \
-     -H 'Authorization: Basic Z2VvY2FsbHdzOmdlb2NhbGx3czAwMQ=='
-
-
-curl -s -D - --verbose --key /Users/alessandro.argentieri/Desktop/work/projects/mtls/levine/servizi-geocallfs/servizi-geocallfs.key \
-     --cert /Users/alessandro.argentieri/Desktop/work/projects/mtls/levine/wrong_cert.cer \
-     -X POST 'https://servizicollaudo.sky.it/hermes-st/residential/v0/orders/AM00000002203674/work-orders/1000006320/notify-update' \
-     -d '{"orderId": "AM00000002203674", "workOrderId": "1000006320", "status": "APERTO", "statusInfo": {"serviceCode": "CUDNORD", "companyNameService": "Centro Sky Udine Nord", "closingMode": "MOBILE"}}' \
-     -H 'Content-Type: application/json; charset=utf-8' \
-     -H 'sender-transaction-id: 1014551654865782941' \
-     -H 'sender: GeoCall' \
-     -H 'sender-transaction-datetime: 2022-06-10T14:56:22Z' \
-     -H 'Authorization: Basic Z2VvY2FsbHdzOmdlb2NhbGx3czAwMQ=='
