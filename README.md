@@ -131,3 +131,5 @@ copy it and reuse by adding the certs:
 ```bash
 curl --cert $CERT --key $KEY --cacert $CA_CERT -X GET  -H "Accept: application/json;as=Table;v=v1;g=meta.k8s.io,application/json;as=Table;v=v1beta1;g=meta.k8s.io,application/json" 'https://127.0.0.1:61988/api/v1/namespaces/default/pods?limit=500' | jq
 ```
+
+You can avoid using `CA_CERT` but you must activate the flag --insecure (or -k) in the curl operation to allow the untrusted HTTPS self signed certificate of the control plane.
