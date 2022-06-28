@@ -307,6 +307,21 @@ $ echo $KUBERNETES_SERVICE_HOST
 $ curl -k -H "Authorization: Bearer $TOKEN"  https://$KUBERNETES_SERVICE_HOST/api/v1/pods
 ```
 
+# ClusterRole, ClusterRoleBinding, ServiceAccount
 
+```bash
+$ kubectl create clusterrolebinding NAME --clusterrole=NAME [--user=username] [--group=groupname] [--serviceaccount=namespace:serviceaccountname] [--dry-run=server|client|none]
+
+$ kubectl create namespace test-namespace
+$ kubectl create serviceaccount deleter-svc-account
+
+$ kubectl create clusterrole pod-deleter-c-role --verb=get,list,watch,delete --resource=pods
+$ kubectl create clusterrolebinding deleter --clusterrole=pod-deleter-c-role --serviceaccount=test-namespace:deleter-svc-account
+$ kubectl run --rm -i chaos-deleter --image=alessandroargentieri/chaos --serviceaccount=deleter-svc-account
+
+# pod -> svc-account
+# cluster-role-binding -> cluster-role
+#                      -> svc-account
+```
 
 
