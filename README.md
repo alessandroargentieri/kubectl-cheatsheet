@@ -133,3 +133,180 @@ curl --cert $CERT --key $KEY --cacert $CA_CERT -X GET  -H "Accept: application/j
 ```
 
 You can avoid using `CA_CERT` but you must activate the flag --insecure (or -k) in the curl operation to allow the untrusted HTTPS self signed certificate of the control plane.
+
+### I don't want to use the flag -v=9!
+
+Let's do it again but we don't wanna use the facilitation of the -v=9 flag!
+
+Get the API Server URLs:
+
+```bash
+$ kubectl config view | grep server
+server: https://501F17E9B.we9.eu-west-1.eks.amazonaws.com
+server: https://127.0.0.1:64775
+```
+
+Get the certificates:
+
+```bash
+$ export clientcert=$(grep client-cert ~/.kube/config | cut -d " " -f 6)
+$ echo $clientcert
+/Users/alessandro.argentieri/.minikube/profiles/minikube/client.crt
+
+$ export clientkey=$(grep client-key ~/.kube/config | cut -d " " -f 6)
+$ echo $clientkey
+/Users/alessandro.argentieri/.minikube/profiles/minikube/client.key
+
+$ export certauth=$(grep certificate-authority ~/.kube/config | cut -d " " -f 6)
+$ echo $certauth
+/Users/alessandro.argentieri/.minikube/profiles/minikube/ca.pem
+```
+
+perform the curl to the URL found before:
+
+```bash
+$ curl --cert $clientcert --key $clientkey --cacert $certauth https://127.0.0.1:64775/api/v1/pods | head -12
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "45284"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "geocall-79896c8757-4wwkm",
+        "generateName": "geocall-79896c8757-",
+        "namespace": "default",
+```
+
+as before, if the certificates in the ~/.kube/config are shown as strings transform those in files:
+
+```bash
+$ export clientcert=$(grep client-cert-data ~/.kube/config | cut -d " " -f 6)
+$ echo $clientcert
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...
+
+$ export clientkey=$(grep client-key-data ~/.kube/config | cut -d " " -f 6)
+$ echo $clientkey
+LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktL...
+
+$ export certauth=$(grep certificate-authority-data ~/.kube/config | cut -d " " -f 6)
+$ echo $certauth
+LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk...
+
+$ echo $clientcert | base64 -d > ./client.pem
+$ echo $clientkey | base64 -d > ./client-key.pem
+$ echo $certauth | base64 -d > ./ca.pem
+```
+
+and perform the curl by passing the files just created:
+
+```bash
+$ curl --cert ./client.pem --key ./client-key.pem --cacert ./ca.pem https://127.0.0.1:64775/api/v1/pods | head -12
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "45284"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "geocall-79896c8757-4wwkm",
+        "generateName": "geocall-79896c8757-",
+        "namespace": "default",
+```
+
+### cURL kubernetes through a proxy (without certificates)
+
+You can enable a proxy to curl your kube api server:
+
+```bash
+$ kubectl proxy --port=8081
+Starting to serve on 127.0.0.1:8081
+```
+
+when the proxy is enabled you can curl with no authentication:
+
+```bash
+$ curl http://localhost:8081/api/v1/namespaces/default/pods | head -11
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "44567"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "geocall-79896c8757-4wwkm",
+        "generateName": "geocall-79896c8757-",
+        "namespace": "default",
+```
+
+## cURL API server from inside a pod
+
+To let a pod communicate with the kube api server we need to extend its grants.
+If you have RBAC enabled on your cluster, use the following snippet to create role binding which will grant the default service account view permissions:
+
+```bash
+$ kubectl create clusterrolebinding default-view --clusterrole=view --serviceaccount=default:default
+clusterrolebinding.rbac.authorization.k8s.io/default-view created
+```
+
+run a pod inside your cluster and go inside it with the bash command:
+
+```bash
+$ kubectl run centos-pod --image=centos:7 -- bash -c "tail -f /dev/null" --restart=Never
+$ kubectl exec -it centos-pod bash
+```
+the pods have a specific folder in which a bearer token and a cacert is contained for their specific serviceaccount.
+From inside the pod let's get the token and call the kube API server:
+
+```bash
+$ TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+$ curl --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+       -H "Authorization: Bearer $TOKEN" \
+       https://kubernetes.default/api/v1/pods | head -11
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "metadata": {
+    "resourceVersion": "951"
+  },
+  "items": [
+    {
+      "metadata": {
+        "name": "centos-pod",
+        "namespace": "default",
+```
+The token is necessary because the kube API server has an authentication mechanism, the cacert is also necessary because it communicates through HTTPS with its nodes (not with the rest of the internet) with a self-signed certificate. So there is no certificate authority to pass the cacert and we need to use the one provided by the kube API server when the pod has been initialised.
+
+We can avoid using the cacert but we need to use `-k` flag or `--insecure` flag to our `curl` command:
+
+```bash
+# alternatives to the usage of the --cacert flag
+$ curl -k -H "Authorization: Bearer $TOKEN"  https://kubernetes.default/api/v1/pods
+$ curl -H "Authorization: Bearer $TOKEN"  https://kubernetes.default/api/v1/pods --insecure
+```
+
+In particular, it's equivalent curling the host `https://kubernetes.default` or the host `https://kubernetes.default/svc`, so it would be equivalent doing:
+
+```bash
+$ curl -k -H "Authorization: Bearer $TOKEN"  https://kubernetes.default/api/v1/pods
+$ curl -k -H "Authorization: Bearer $TOKEN"  https://kubernetes.default.svc/api/v1/pods
+```
+
+but instead of using a DNS name we can use directly the kube API server IP visible ONLY from inside the pod:
+
+```bash
+$ echo $KUBERNETES_SERVICE_HOST
+10.96.0.1
+
+$ curl -k -H "Authorization: Bearer $TOKEN"  https://$KUBERNETES_SERVICE_HOST/api/v1/pods
+```
+
+
+
+
