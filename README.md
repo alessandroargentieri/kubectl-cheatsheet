@@ -49,6 +49,23 @@ kubectl get pods [YOUR_PODE_NAME] --template='{{(index (index .spec.containers 0
 kubectl port-forward [YOUR_PODE_NAME] [LOCALHOST_PORT]:[POD_PORT]
 ```
 
+## Apply a YAML on the fly without saving a file
+
+You can paste your YAML manifests in the terminal without having to save them locally by using this syntax:
+
+```bash
+$ kubectl apply -f - << EOF
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: log-reader
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "watch", "list"]
+EOF  
+```
+
 ## CURL instead of kubectl
 
 Kubectl hides https API calls. The required credentials are stored in `~/.kube/config` file.
