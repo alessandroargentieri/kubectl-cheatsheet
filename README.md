@@ -15,7 +15,7 @@ You can proceed to use an imperative deploy and later on get the respective decl
 
 ```bash
 # create deployment from docker image 'alpine' by passing a custom command (or else it exits immediately)
-kubectl create deployment test --image alpine -- sh -c 'echo "hello!"; tail -f /dev/null'
+kubectl create deployment test --replicas 4 --image alpine -- sh -c 'echo "hello!"; tail -f /dev/null'
 # scaling replicas (you can do it only later with the imperative way!)
 kubectl scale deployment test --replicas 3
 
