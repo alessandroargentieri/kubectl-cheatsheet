@@ -359,7 +359,7 @@ run a pod inside your cluster and go inside it with the bash command:
 
 ```bash
 $ kubectl run centos-pod --image=centos:7 -- bash -c "tail -f /dev/null" --restart=Never
-$ kubectl exec -it centos-pod bash
+$ kubectl exec -it centos-pod -- bash
 ```
 the pods have a specific folder in which a bearer token and a cacert is contained for their specific serviceaccount.
 From inside the pod let's get the token and call the kube API server:
