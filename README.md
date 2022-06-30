@@ -67,6 +67,16 @@ $ kubectl get pod centos-pod --template '{{.status.podIP}}'
 172.17.0.3
 ```
 
+## Node subnet
+
+To guarantee each pod has its own unique private IP address inside the entire cluster, to any kubernetes node it's given a unique subnet from which pods are assigned IP addresses on that node.
+To know the range of private IPs the subnet for a node is given you can use the following command:
+
+```bash
+$ kubectl get node <node-name> -o json | jq '.spec.podCIDR'
+"10.244.0.0/24"
+```
+
 ## Apply a YAML on the fly without saving a file
 
 You can paste your YAML manifests in the terminal without having to save them locally by using this syntax:
