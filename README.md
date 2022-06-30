@@ -137,6 +137,18 @@ rules:
 EOF  
 ```
 
+## Copy files from local machine to pod and vice versa
+
+Yoi can use kubectl to copy files from and to a pod:
+
+```bash
+# copy file from local machine to pod
+kubectl cp $PWD/example_file.txt centos-pod:/home/example_file.txt
+
+# copy file from pod to local machine (renaming the file)
+kubectl cp centos-pod:/home/example_file.txt $PWD/hello.txt
+```
+
 ## CURL instead of kubectl
 
 Kubectl hides https API calls. The required credentials are stored in `~/.kube/config` file.
