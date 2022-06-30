@@ -49,6 +49,24 @@ kubectl get pods [YOUR_PODE_NAME] --template='{{(index (index .spec.containers 0
 kubectl port-forward [YOUR_PODE_NAME] [LOCALHOST_PORT]:[POD_PORT]
 ```
 
+## Get the pod IP (visible only inside the cluster)
+
+Even if you normally reach pods through their service objects, you could connect (or let another pod) connect to a pod using its own IP address.
+To know the IP address of a pod you could:
+
+```bash
+$ kubectl get pod centos-pod -o wide
+NAME         READY   STATUS    RESTARTS   AGE   IP           NODE       NOMINATED NODE   READINESS GATES
+centos-pod   1/1     Running   0          45h   172.17.0.3   minikube   <none>           <none>
+```
+
+or using the template:
+
+```bash
+$ kubectl get pod centos-pod --template '{{.status.podIP}}'
+172.17.0.3
+```
+
 ## Apply a YAML on the fly without saving a file
 
 You can paste your YAML manifests in the terminal without having to save them locally by using this syntax:
