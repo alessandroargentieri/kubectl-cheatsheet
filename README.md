@@ -77,6 +77,49 @@ $ kubectl get node <node-name> -o json | jq '.spec.podCIDR'
 "10.244.0.0/24"
 ```
 
+## Pod to pod communication
+
+To summarize the Kubernetes networking in a few works:
+Every node has its own IP address (public or private if the cluster is in a LAN), for example 172.23.1.1.
+Every pod has its own private IP adress, unique in the cluster taken from a subnet specific for the node, for example: 10.4.4.4
+Every node has a subnet of private IPs from which its pods get their private IPs, for example: 10.4.4.0/24.
+Flannel or Calico are CNI plugins that work in every node of the cluster and create container networks, namespaces and interfaces.
+
+If a pod on a node must communicate with a pod of another node (knowing its unique IP, for example 10.4.4.4), the linux kernel of the node checks the route table of the node to check what node IP address corresponds to the specific private subnet to which that private pod IP address belongs to, for example:
+
+```
+10.4.4.0/24 routed to 172.23.1.1 
+```
+
+the CNI plugin wraps the request into an UDP package (vxlan for Flannel, ip-in-ip for Calico).
+So instead of sending:
+
+```
+IP: 10.4.4.4
+TCP stuff
+HTTP stuff
+```
+
+we will send:
+
+```
+IP: 172.9.9.9
+(extra wrapper stuff)
+IP: 10.4.4.4
+TCP stuff
+HTTP stuff
+```
+
+The request is sent to that node (172.9.9.9) and Flannel or Calico unwrap the request, get the private pod IP (10.4.4.4) belonging to the private subnet for that node (10.4.4.0/24) and forwards the request to that namespace, network and IP.
+
+Useful links:
+
+https://jvns.ca/blog/2016/12/22/container-networking
+
+https://ronaknathani.com/blog/2020/08/how-a-kubernetes-pod-gets-an-ip-address/
+
+https://stackunderflow.dev/p/network-namespaces-and-docker/
+
 ## Apply a YAML on the fly without saving a file
 
 You can paste your YAML manifests in the terminal without having to save them locally by using this syntax:
