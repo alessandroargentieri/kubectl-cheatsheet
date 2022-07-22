@@ -77,13 +77,13 @@ $ kubectl get node <node-name> -o json | jq '.spec.podCIDR'
 "10.244.0.0/24"
 ```
 
-## Pod to pod communication
+## Pod to pod communication (kubernetes networking)
 
 To summarize the Kubernetes networking in a few works:
-Every node has its own IP address (public or private if the cluster is in a LAN), for example 172.23.1.1.
-Every pod has its own private IP adress, unique in the cluster taken from a subnet specific for the node, for example: 10.4.4.4
-Every node has a subnet of private IPs from which its pods get their private IPs, for example: 10.4.4.0/24.
-Flannel or Calico are CNI plugins that work in every node of the cluster and create container networks, namespaces and interfaces.
+- Every node has its own IP address (public or private if the cluster is in a LAN), for example 172.23.1.1.
+- Every pod has its own private IP adress, unique in the cluster taken from a subnet specific for the node, for example: 10.4.4.4
+- Every node has a subnet of private IPs from which its pods get their private IPs, for example: 10.4.4.0/24.
+- Flannel or Calico are CNI plugins that work in every node of the cluster and create container networks, namespaces and interfaces.
 
 If a pod on a node must communicate with a pod of another node (knowing its unique IP, for example 10.4.4.4), the linux kernel of the node checks the route table of the node to check what node IP address corresponds to the specific private subnet to which that private pod IP address belongs to, for example:
 
