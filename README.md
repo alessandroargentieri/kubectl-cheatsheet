@@ -88,7 +88,7 @@ To summarize the Kubernetes networking in a few works:
 If a pod on a node must communicate with a pod of another node (knowing its unique IP, for example 10.4.4.4), the linux kernel of the node checks the route table of the node to check what node IP address corresponds to the specific private subnet to which that private pod IP address belongs to, for example:
 
 ```
-10.4.4.0/24 routed to 172.23.1.1 
+10.4.4.0/24 routed to 172.9.9.9 
 ```
 
 the CNI plugin wraps the request into an UDP package (vxlan for Flannel, ip-in-ip for Calico).
@@ -111,6 +111,8 @@ HTTP stuff
 ```
 
 The request is sent to that node (172.9.9.9) and Flannel or Calico unwrap the request, get the private pod IP (10.4.4.4) belonging to the private subnet for that node (10.4.4.0/24) and forwards the request to that namespace, network and IP.
+
+The nodes are connected through HTTP, except if you manually configure all the certificates to expone them over HTTPS. A common best practice is to add every node to a VPN, so they can see each other like they were in the same LAN.
 
 Useful links:
 
