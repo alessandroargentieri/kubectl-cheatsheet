@@ -409,6 +409,30 @@ $ echo $KUBERNETES_SERVICE_HOST
 $ curl -k -H "Authorization: Bearer $TOKEN"  https://$KUBERNETES_SERVICE_HOST/api/v1/pods
 ```
 
+# API-Resources and CRDs
+
+You can get the whole list of kubernetes API resources (standard and custom by typing:
+
+```bash
+$ kubectl api-resources
+```
+
+If you want to get only the custom ones type:
+
+```bash
+$ kubectl get crds
+```
+
+# Saving a kubeconfig from a secret
+
+Sometimes you can have sensitive data in a kubernetes secret that you want to save. For example you can have a kubeconfig file to access to another cluster (a subcluster for example). Let's suppose you have the field `.data.kubeconfig` of the json version of the secret containing a new kubeconfig to be saved locally. Then you can acquire the information (opaque in base64), decode it and save in a file. Then you can switch the context your kubectl is pointing to by exporting the $KUBECONFIG environment variable and pointing to the new kubeconfig file:
+
+```bash
+$ kubectl get secret mysecret -o jsonpath="{.data.kubeconfig}" | base64 --decode > ~/.kube/config_new-context
+$ export KUBECONFIG=~/.kube/config_new-context
+# now your kubectl points to the new context / cluster
+```
+
 # ClusterRole, ClusterRoleBinding, ServiceAccount
 
 ```bash
