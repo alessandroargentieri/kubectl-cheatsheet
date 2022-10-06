@@ -122,6 +122,19 @@ https://ronaknathani.com/blog/2020/08/how-a-kubernetes-pod-gets-an-ip-address/
 
 https://stackunderflow.dev/p/network-namespaces-and-docker/
 
+## Logging
+
+Here the ways to inspect pod logs using `kubectl`:
+
+```bash
+# logs recorded since 15 minutes ago
+kubectl logs --since=15m <podname>
+# last 100 lines of logs
+kubectl logs --tail=100 -f <podname>
+# logs recorded before a crash-restart
+kubectl logs --previous <podname>
+```
+
 ## Apply a YAML on the fly without saving a file
 
 You can paste your YAML manifests in the terminal without having to save them locally by using this syntax:
