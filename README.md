@@ -463,4 +463,38 @@ $ kubectl run --rm -i chaos-deleter --image=alessandroargentieri/chaos --service
 #                      -> svc-account
 ```
 
+# Some commands through temporary pods
 
+Suppose we launched these commands:
+
+```
+CREATE DATABASE staff;
+USE staff;
+CREATE TABLE editorials (id INT, name VARCHAR(20), email VARCHAR(20), PRIMARY KEY(id));
+SHOW TABLES;
+INSERT INTO editorials (id, name, email) VALUES (01, "Olivia", "olivia@company.com");
+SELECT * FROM editorial;
+```
+
+Launch a pod with a MySQL client and use it:
+
+```
+$ kubectl run -it mysql-client --image=logiqx/mysql-client --restart=Never --rm -- sh
+~/work $ mysql --host=10.88.88.34 --port=3306 --database=staff --user=root --password=abcd1234 
+
+MySQL [staff]> show tables;
++-----------------+
+| Tables_in_staff |
++-----------------+
+| editorials      |
++-----------------+
+1 row in set (0.004 sec)
+
+MySQL [staff]> select * from editorials;
++----+--------+--------------------+
+| id | name   | email              |
++----+--------+--------------------+
+|  1 | Olivia | olivia@company.com |
++----+--------+--------------------+
+1 row in set (0.002 sec)
+```
