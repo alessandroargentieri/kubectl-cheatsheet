@@ -49,6 +49,13 @@ kubectl get pods [YOUR_PODE_NAME] --template='{{(index (index .spec.containers 0
 kubectl port-forward [YOUR_PODE_NAME] [LOCALHOST_PORT]:[POD_PORT]
 ```
 
+## Get all the pods in a specific node
+You can get all the pods deployed in a node, giving the node name:
+
+```bash
+kubectl get pods --all-namespaces --field-selector spec.nodeName=<NODE_NAME>
+```
+
 ## Get the pod IP (visible only inside the cluster)
 
 Even if you normally reach pods through their service objects, you could connect (or let another pod) connect to a pod using its own IP address.
