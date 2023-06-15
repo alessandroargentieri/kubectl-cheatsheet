@@ -505,3 +505,43 @@ MySQL [staff]> select * from editorials;
 +----+--------+--------------------+
 1 row in set (0.002 sec)
 ```
+
+# Expose cluster with the official dashboard:
+
+Create the dashboard in your cluster:
+```
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+```
+Expose it through a nodeport service:
+```
+kubectl expose deployment kubernetes-dashboard --type=NodePort --name=kubernetes-dashboard-nodeport --namespace=kubernetes-dashboard --port=80 --target-port=8443
+```
+Fetch the nodeport port, in this case is 32254:
+```
+kubectl get svc -n kubernetes-dashboard
+NAME                            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+kubernetes-dashboard            ClusterIP   10.43.24.84    <none>        443/TCP        8m4s
+dashboard-metrics-scraper       ClusterIP   10.43.32.18    <none>        8000/TCP       7m59s
+kubernetes-dashboard-nodeport   NodePort    10.43.167.15   <none>        80:32254/TCP   21s
+```
+Fetch the public URL of one node (the controlplane is good in this case 212.2.241.66):
+```
+$ kubectl cluster-info
+Kubernetes control plane is running at https://212.2.241.66:6443
+CoreDNS is running at https://212.2.241.66:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://212.2.241.66:6443/api/v1/namespaces/kube-system/services/https:metrics-server:https/proxy
+```
+Fetch the security token from the deployed secret:
+```
+kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep kubernetes-dashboard | awk '{print $1}')
+```
+Visit your browser: https://212.2.241.66:32254/
+And paste the token when requested.
+
+The dashboard has metrics and logs for the whole cluster and uses the metrics server to fetch all the metrics. The same you could achieve with:
+```
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods?labelSelector=<label_selector>
+kubectl logs <podname> -n namespace
+```
