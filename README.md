@@ -683,7 +683,13 @@ hello                                                   ClusterIP      10.43.111
 Then from the Civo Dashboard navigate to `Networking>DNS>Add`
 From there add `alessandroargentieri.com`.
 You will be asked to set the Civo DNS servers in the originary website where you've bought that domain.
-By going to the originary Domain Owner and changing the reference you're indicating that you want to change the Owner of that domain.
+In my case it was Namecheap. By logging in Namecheap and going to the section `DNS>Custom Domains` I can indicate the new Civo Nameservers which will substitute the Namecheap ones. So I'll add `ns0.civo.com` and `ns1.civo.com` as the new nameservers for that domain.
+The change, after saving, will be visible by doing (in the terminal):
+```bash
+$ dig NS alessandroargentieri.com
+$ dig alessandroargentieri.com
+```
+I could have left Namecheap as DNS Nameserver and pointed to the Civo cluster IP address, but I did so to move also the Domain "Ownership" to Civo.
 After that you can go back to civo.com and continue the DNS configuration by adding the DNS records.
 So, click on the right side of the added DNS on `Actions>DNS Records`
 Add two DNS records:
