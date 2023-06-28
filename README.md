@@ -561,3 +561,134 @@ kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
 kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods?labelSelector=<label_selector>
 kubectl logs <podname> -n namespace
 ```
+# HTTPS with ingress
+
+Create a CIVO cluster:
+```bash
+$ civo kube create civo-tls
+```
+When the cluster is ready download its config and export the KUBECONFIG variable:
+```bash
+$ civo kube config civo-tls > ~/.kube/config_civo-tls
+$ export KUBECONFIG=$HOME/.kube/config_civo-tls
+```
+Check if the cluster is reachable:
+```bash
+$ kubectl cluster-info
+```
+
+Install cert manager through helm:
+```bash    
+$ helm repo add jetstack https://charts.jetstack.io
+$ helm repo update
+$ helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
+```
+Install NGINX ingress controller through helm:
+```bash    
+$ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+$ helm update
+$ helm install ingress-controller ingress-nginx/ingress-nginx
+```
+Install the `ClusterIssuer` for production by specifying your own domain and associated email:
+```bash    
+$ kubectl apply -f - << EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: hello@alessandroargentieri.com
+    privateKeySecretRef:
+      name: letsencrypt-production
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+EOF
+```
+Install the Hello Deployment, the service and the Ingress (rules) to access via TLS (HTTPS):
+```bash    
+$ kubectl apply -f - << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello
+  template:
+    metadata:
+      labels:
+        app: hello
+    spec:
+      containers:
+        - name: hello
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello
+spec:
+  selector:
+    app: hello
+  ports:
+    - protocol: TCP
+      port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 80
+  tls:
+    - hosts:
+      - alessandroargentieri.com
+EOF
+```
+Check the External IP to reach the cluster:
+```bash
+$ kubectl get ingress
+NAME    CLASS    HOSTS   ADDRESS         PORTS     AGE
+hello   <none>   *       74.220.21.171   80, 443   3m48s
+```
+That means, via an external `LoadBalancer` which is created for the ingress (but the Loadbalancer is L4, and the ingress-controller reached through it is L7 so completes the logics that are missing in the Loadbalancer):
+```bash
+$ kubectl get svc
+NAME                                                    TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)                      AGE
+kubernetes                                              ClusterIP      10.43.0.1      <none>          443/TCP                      26m
+ingress-controller-ingress-nginx-controller-admission   ClusterIP      10.43.49.111   <none>          443/TCP                      16m
+ingress-controller-ingress-nginx-controller             LoadBalancer   10.43.181.71   74.220.21.171   80:30376/TCP,443:31485/TCP   16m
+hello                                                   ClusterIP      10.43.111.5    <none>          80/TCP                       13m
+```
+Then from the Civo Dashboard navigate to `Networking>DNS>Add`
+From there add `alessandroargentieri.com`.
+You will be asked to set the Civo DNS servers in the originary website where you've bought that domain.
+By going to the originary Domain Owner and changing the reference you're indicating that you want to change the Owner of that domain.
+After that you can go back to civo.com and continue the DNS configuration by adding the DNS records.
+So, click on the right side of the added DNS on `Actions>DNS Records`
+Add two DNS records:
+```
+Type: A, Name: @, Value: 74.220.21.171
+Type: A, Name: www, Value: 74.220.21.171
+```
+
