@@ -508,6 +508,8 @@ MySQL [staff]> select * from editorials;
 # Dump a Redis Database in a Kubernetes cluster and copy locally
 
 ```bash
+# fetch the container env var REDIS_PASS:
+# export REDIS_PASS=`k exec -it redis-0 -- sh -c 'env | grep REDIS_PASS | cut -d "=" -f 2'`
 kubectl exec -it redis-0 -- sh
 / env | grep REDIS_PASS
 REDIS_PASS=e0ub6jEsxHmYAdLe149Zaqh6ohvLTP
