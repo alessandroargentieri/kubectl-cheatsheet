@@ -505,6 +505,20 @@ MySQL [staff]> select * from editorials;
 +----+--------+--------------------+
 1 row in set (0.002 sec)
 ```
+# Dump a Redis Database in a Kubernetes cluster and copy locally
+
+```bash
+kubectl exec -it redis-0 -- sh
+/ env | grep REDIS_PASS
+REDIS_PASS=e0ub6jEsxHmYAdLe149Zaqh6ohvLTP
+/ redis-cli 
+> AUTH REDIS_PASS=e0ub6jEsxHmYAdLe149Zaqh6ohvLTP
+> SELECT 13
+> DBSIZE
+> SAVE
+> exit
+kubectl cp redis-0:/data/dump.rdb ./redis-dump.rdb
+```
 
 # Expose cluster with the official dashboard:
 
