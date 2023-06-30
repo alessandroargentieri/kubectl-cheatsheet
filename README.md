@@ -698,3 +698,46 @@ Type: A, Name: @, Value: 74.220.21.171
 Type: A, Name: www, Value: 74.220.21.171
 ```
 
+Now let's issue a Certificate.
+We need the DNS entry for the Loadbalancer (L4) created for the Ingress (L7).
+We can fetch via `civo` CLI with:
+```bash
+$ civo loadbalancer ls
++--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------+
+| ID                                   | Name                                                         | Algorithm   | Public IP     | State     | Backends                 |
++--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------+
+| fb88ba8c-7c4a-4ce4-a524-c0b82aee1698 | civo-tls-default-ingress-controller-ingress-nginx-controller | round_robin | 74.220.21.171 | available | 192.168.1.3, 192.168.1.3 |
++--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------+
+
+$ civo loadbalancer show civo-tls-default-ingress-controller-ingress-nginx-controller
++--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------------------------------+--------------------------+
+| ID                                   | Name                                                         | Algorithm   | Public IP     | State     | DNS Entry                                        | Backends                 |
++--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------------------------------+--------------------------+
+| fb88ba8c-7c4a-4ce4-a524-c0b82aee1698 | civo-tls-default-ingress-controller-ingress-nginx-controller | round_robin | 74.220.21.171 | available | fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com | 192.168.1.3, 192.168.1.3 |
++--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------------------------------+--------------------------+
+```
+Or via `kubectl` with:
+```bash
+$ kubectl get ingress hello -o jsonpath={".status.loadBalancer.ingress[0].hostname"}
+fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
+```
+We can compose and apply the `Certificate` manifest to be issued (reference: `https://cert-manager.io/docs/reference/api-docs/#cert-manager.io`)
+
+```bash
+$ kubectl apply -f - << EOF
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-cert
+  namespace: default
+spec:
+  secretName: tls-cert
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+  - fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
+EOF
+```
+
+
