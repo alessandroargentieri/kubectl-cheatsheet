@@ -737,6 +737,7 @@ spec:
     kind: ClusterIssuer
   dnsNames:
   - fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
+  - alessandroargentieri.com 
 EOF
 ```
 
