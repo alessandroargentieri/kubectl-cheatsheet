@@ -740,5 +740,43 @@ spec:
   - alessandroargentieri.com 
 EOF
 ```
+Now that we,ve created the certificate, let's wait it to be ready:
+```bash
+$ kubectl get certs tls-cert
+```
+When it's ready if we search `https://alessandroargentieri.com` on the browser, we see it's still unsecure.
+We need to update the ingress by setting the `tls-cert`:
+
+```bash
+$ kubectl apply -f - << EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  rules:
+    - host: alessandroargentieri.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 80
+  tls:
+    - hosts:
+      - alessandroargentieri.com
+      secretName: tls-cert 
+EOF
+```
+And now, by searching on the browser `https://alessandroargentieri.com` we find a valid certificate, verifiable through:
+```bash
+$ echo | openssl s_client -connect alessandroargentieri.com:443 -servername alessandroargentieri.com
+```
 
 
