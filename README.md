@@ -563,6 +563,12 @@ kubectl logs <podname> -n namespace
 ```
 # HTTPS with ingress
 
+In this example:
+- we have a domain in `Tophost.it` and we move it to `civo.com`
+- we add two DNS records for `@ and www` in `civo.com`
+- we have a kubernetes cluster in `civo.com`
+- we issue a production certificate for `alessandroargentieri.com` and `www.alessandroargentieri.com`
+
 Create a CIVO cluster:
 ```bash
 $ civo kube create civo-tls
@@ -793,4 +799,239 @@ And now, by searching on the browser `https://alessandroargentieri.com` we find 
 $ echo | openssl s_client -connect alessandroargentieri.com:443 -servername alessandroargentieri.com
 ```
 
+# HTTPS with ingress (2)
+
+In this example:
+- we have a sub domain in `Tophost.it`
+- we have a kubernetes cluster in `civo.com`
+- we issue a production certificate for `hello.quicktutorialz.com` and `www.hello.quicktutorialz.com`
+
+Create a CIVO cluster with Civo CLI:
+```bash
+$ civo kube create hello-tls
+```
+
+When the cluster is ready download its config and export the KUBECONFIG variable:
+```bash
+$ civo kube config hello-tls > ~/.kube/config_hello-tls
+$ export KUBECONFIG=$HOME/.kube/config_hello-tls
+```
+Check if the cluster is reachable:
+```bash
+$ kubectl cluster-info
+```
+
+Install cert manager through helm:
+```bash    
+$ helm repo add jetstack https://charts.jetstack.io
+$ helm repo update
+$ helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set installCRDs=true
+```
+
+Install NGINX ingress controller through helm:
+```bash    
+$ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+$ helm update
+$ helm install ingress-controller ingress-nginx/ingress-nginx
+```
+
+Install the Hello Deployment exposing port 8080 and its Service exposing port 80:
+```bash    
+$ kubectl apply -f - << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello
+  template:
+    metadata:
+      labels:
+        app: hello
+    spec:
+      containers:
+        - name: hello
+          image: jmalloc/echo-server:latest
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello
+spec:
+  selector:
+    app: hello
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+EOF
+```
+You can verify the `hello` service is correctly connected to the `hello-deployment` via port-forwarding to the `hello` service:
+    ```bash
+    $ k get pods
+NAME                    READY   STATUS    RESTARTS   AGE
+hello-d5686fbfd-7mssx   1/1     Running   0          14s
+hello-d5686fbfd-vxvhl   1/1     Running   0          14s
+~  $ k port-forward services/hello 8003:80
+Forwarding from 127.0.0.1:8003 -> 8080
+Forwarding from [::1]:8003 -> 8080
+Handling connection for 8003
+```
+You can verify from your browser by visiting `http://localhost:8003` or via `curl http://localhost:8003`.
+After that, you can press `CTRL+C` to stop the port-forward process.
+
+We can expose the Cluster to the outside world (no need anymore of `port-forward`) using:
+- a NodePort which is a Service exposing a port (of type `NodePort`) from every node of the cluster. With the NodePort we're not able to insert the TLS logic easily because this service is a Network Layer service (L4) so it doesn't discriminate the TLS information from the packets it receives. The TLS information is in the HTTP protocol which is implemented in the Application Layer (L7), instead the Network Layer (L4) of the NodePort service allows this service to only send packets to the right destinations using TCP (or UDP). The HTTP protocol is built on top of TCP, but the NodePort service is too dumb to understand its logics. Besides that, the NodePort service in Kubernetes open a port on every node of the cluster and this can bring to security issues.
+- a LoadBalancer, (often named "external" LoadBalancer) which is a Service type in Kubernetes that secretely creates private NodePorts (invisible to the administrators) and, through the "Cloud Controller Manager" pod installed in the Managed Cluster, triggers the creation of an external service acting as a Reverse Proxy and sending requests (in Round Robin) to the pointed services/deployments in the cluster via the secreted NodePorts. If the cluster is not managed, no Cloud Controller Manager is installed and by installing a `LoadBalancer` Service it only generate a NodePort and/or some proxy on it (like for Minikube). Normally, when you build the cluster from the ground-up, you need to install some sort of provider to allow the creation of an external LoadBalancer, like MetalLB which is a famous tool used for self-managed clusters. With `LoadBalancer` Service type, we have L4 level services, so even in this case is not possible to manage directly TLS.
+- an Ingress which is a L7 (Application Layer) service type. By creating an Ingress we're triggering the creation of an External LoadBalancer (L4) which connects to invisible NodePorts in every kubernetes node, backed by a deployment which contains all the L7 logic (TLS, prefixes, headers, cookies, etc.). This way is much more easy and preferred to integrate TLS.
+
+Let's install a basic NGINX ingress controller:
+```bash
+$ kubectl apply -f - << EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 80
+EOF
+```
+Once the ingress is deployed, you can check the exported public IP through:
+```bash
+$ kubectl get ingress
+NAME    CLASS    HOSTS  ADDRESS         PORTS     AGE
+hello   <none>   *      74.220.18.132   80        2m
+```
+With the public IP Address you can go to your Domain provider and add two DNS records as follows:
+If the domain is registered in `Civo`, add the domain: `hello.quicktutorialz.com` and from this, add the two records:
+```
+Type: A, Name: @, Value: 74.220.18.132
+Type: A, Name: www, Value: 74.220.18.132
+```
+In my case, it is registered in `Tophost.it` so I was required to add the two DNS records for the registered `quicktutorialz.com` domain:
+```
+Type: A, Name: hello.quicktutorialz.com, Value: 74.220.18.132
+Type: A, Name: www.hello.quicktutorialz.com, Value: 74.220.18.132
+```
+Once we have the two DNS registered and the information spread all over the internet (you can check with `dig NS hello.quicktutorialz.com`) we can start thinking about the TLS by adding a `CertificateIssuer` and issuing a `Certificate` (both Custom Resources have been already installed in the cluster through Helm).
+
+Install the `ClusterIssuer` for production by specifying your own domain and associated email:
+```bash    
+$ kubectl apply -f - << EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: alexmawashi87@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-production
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+EOF
+```
+
+Once we have the `ClusterIssuer` we can proceed creating a `tls-cert` of type `Certificate` Custom Resource, already installed in our cluster.
+We want to have the certificate to secure the domain `hello.quicktutorialz.com` which has been already registered and to which we will connect our cluster via the Ingress `hello`:
+```bash
+$ kubectl apply -f - << EOF
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-cert
+  namespace: default
+spec:
+  secretName: tls-cert
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+  - hello.quicktutorialz.com     # it must exist somewhere as added DNS record/domain
+  - www.hello.quicktutorialz.com # it must exist somewhere as added DNS record/domain
+EOF
+```
+Now that we,ve created the certificate, let's wait it to be ready:
+```bash
+$ kubectl get certs tls-cert
+NAME       READY   SECRET     AGE
+tls-cert   True    tls-cert   34s
+```
+Now that the `tls-cert` is ready for the existing `hello` ingress and the existing and registered `hello.quicktutorialz.com` we can update the ingress definition by adding the TLS:
+```bash
+$ kubectl apply -f - << EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  rules:
+    - host: hello.quicktutorialz.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 80
+    - host: www.hello.quicktutorialz.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 80                  
+  tls:
+    - hosts:
+      - hello.quicktutorialz.com
+      - www.hello.quicktutorialz.com
+      secretName: tls-cert 
+EOF
+```
+Now, if we query the ingress, the 443 port for TLS and the given domains will appear:
+```bash
+$ kubectl get ingress
+NAME    CLASS    HOSTS                                                   ADDRESS         PORTS     AGE
+hello   <none>   hello.quicktutorialz.com,www.hello.quicktutorialz.com   74.220.18.132   80, 443   2m
+```
+You can check the secured connection via:
+```bash
+curl https://hello.quicktutorialz.com
+curl https://www.hello.quicktutorialz.com
+```
+and, alternatively, you can check the validity of your certificates through:
+```bash
+$ echo | openssl s_client -connect hello.quicktutorialz.com:443 -servername hello.quicktutorialz.com
+```
+
+And. what if we have `https://mydomain.com` for the website and `https://api.mydomain.com` for the APIs?
+Isn't it exactly the same?
+😉
 
