@@ -872,7 +872,7 @@ spec:
 EOF
 ```
 You can verify the `hello` service is correctly connected to the `hello-deployment` via port-forwarding to the `hello` service:
-    ```bash
+```bash
     $ k get pods
 NAME                    READY   STATUS    RESTARTS   AGE
 hello-d5686fbfd-7mssx   1/1     Running   0          14s
