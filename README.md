@@ -768,12 +768,26 @@ spec:
                 name: hello
                 port:
                   number: 80
+    - host: fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  number: 80                  
   tls:
     - hosts:
       - alessandroargentieri.com
+      - fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
       secretName: tls-cert 
 EOF
 ```
+Here we decided to bring TLS to both the `alessandroargentieri.com` domain and the `fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com` (ingress) loadbalancer domain.
+This is possible, because we mentioned both the URLs in the `tls-cert` and in the `ingress`.
+Alternatively, you could choose only to encrypt the `alessandroargentieri.com` connection.
 And now, by searching on the browser `https://alessandroargentieri.com` we find a valid certificate, verifiable through:
 ```bash
 $ echo | openssl s_client -connect alessandroargentieri.com:443 -servername alessandroargentieri.com
