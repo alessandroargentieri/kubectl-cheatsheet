@@ -1035,3 +1035,43 @@ And. what if we have `https://mydomain.com` for the website and `https://api.myd
 Isn't it exactly the same?
 😉
 
+---
+
+## Add Profiling to your code with `pprof` and `parca` (as client)
+
+###  1. install the pprof in the code (https://www.parca.dev/docs/instrumenting-go)
+```golang
+import _ "net/http/pprof"
+
+func main() {
+    go func() {
+        log.Println(http.ListenAndServe("localhost:6060", nil))
+    }()
+
+    // Your application code...
+}
+```
+### 2. run the parca server inside your code and visit:
+http://localhost:6060/debug/pprof/
+
+### 3. if that code is deployed in three replicas in kubernetes pods, port-forward to 6061, 6062, 6063
+Run the port forward from the three replicas on which the pprof is running on port 6060 (inside the pods) exposing them on ports 6061, 6062, 6063 (from three different terminals):
+```bash
+$ kubectl port-forward pods/mypod-7998bd4dcd-k5tn7 -n mynamespace 6061:6060
+$ kubectl port-forward pods/mypod-7998bd4dcd-rnbj2 -n mynamespace 6062:6060
+$ kubectl port-forward pods/mypod-7998bd4dcd-tzxmg -n mynamespace 6063:6060
+```
+You can visit the browser http://localhost:6061/debug/pprof/, http://localhost:6062/debug/pprof/, http://localhost:6063/debug/pprof/
+
+### 4. install parca locally, a better client for the pprof (https://www.parca.dev/docs/binary)
+Installation of parca locally:
+```bash
+curl -sL https://github.com/parca-dev/parca/releases/download/v0.18.0/parca_0.18.0_`uname -s`_`uname -m`.tar.gz | tar xvfz - parca
+```
+Download the base configs for parca, customise and use them:
+```bash
+curl -sL https://raw.githubusercontent.com/parca-dev/parca/v0.18.0/parca.yaml > parca.yaml
+nano parca.yaml # substitute the port with 6061, 6062, 6063 (you can have an array of ports from different pod replicas, for example)
+./parca --config-path="parca.yaml"
+```
+From the process logs you can see the local parca server is starting on port 7070 so you can visit your browser at http://localhost:7070 where the parca server (client for the pprof) is running (listening on the three replicas)
