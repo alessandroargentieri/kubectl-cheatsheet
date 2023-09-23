@@ -1075,3 +1075,47 @@ nano parca.yaml # substitute the port with 6061, 6062, 6063 (you can have an arr
 ./parca --config-path="parca.yaml"
 ```
 From the process logs you can see the local parca server is starting on port 7070 so you can visit your browser at http://localhost:7070 where the parca server (client for the pprof) is running (listening on the three replicas)
+
+--
+
+## how k8s manages its internal DNS names (like service.namespace.cluster.local)
+
+Kubernetes usa dei nomi logici al posto degli IP e il DNS Server (nameserver) che viene interpellato dai pod per la risoluzione di tali nomi è il pod di CoreDNS attivo nel namespace `kube-system`.
+I pod, come tutte le macchine linux, hanno l'informazione del nameserver nel file locale `/etc/resolv.conf` inizializzato quando il pod viene avviato.
+```bash
+# avvio un pod nel cluster
+$ kubectl run centos-pod --image=centos:7 -- bash -c "tail -f /dev/null" --restart=Never
+pod/centos-pod created
+
+# vediamo il suo IP
+$ k get pods/centos-pod -o wide
+NAME         READY   STATUS    RESTARTS   AGE     IP           NODE                                             NOMINATED NODE   READINESS GATES
+centos-pod   1/1     Running   0          3m19s   10.42.0.20   k3s-hello-tls-e92c-b6f3b2-node-pool-645d-8bfg9   <none>           <none>
+
+# vediamo come viene risolto il DNS a livello del pod (il file etc/resolv.conf contiene il nameserver del cluster 10.43.0.10)
+ $ k exec -it centos-pod -- cat /etc/resolv.conf
+search default.svc.cluster.local svc.cluster.local cluster.local
+nameserver 10.43.0.10
+options ndots:5
+
+# vediamo il file degli host per il pod
+$ k exec -it centos-pod -- cat /etc/hosts
+# Kubernetes-managed hosts file.
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::0	ip6-localnet
+fe00::0	ip6-mcastprefix
+fe00::1	ip6-allnodes
+fe00::2	ip6-allrouters
+10.42.0.20	centos-pod
+
+# guardacaso il nameserver 10.43.0.10 è proprio il SVC che punta a coreDNS avviato come deployment nel ns kube-system
+$ k get svc/kube-dns -n kube-system
+NAME       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                  AGE
+kube-dns   ClusterIP   10.43.0.10   <none>        53/UDP,53/TCP,9153/TCP   82d
+
+# coreDNS è il server DNS (nameserver) interno al cluster per risolvere tutti i DNS interni al cluster
+$ k get deploy/coredns -n kube-system -o wide
+NAME      READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                   SELECTOR
+coredns   1/1     1            1           82d   coredns      rancher/mirrored-coredns-coredns:1.9.1   k8s-app=kube-dns
+```
