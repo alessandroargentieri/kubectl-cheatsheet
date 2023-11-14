@@ -142,6 +142,12 @@ kubectl logs --tail=100 -f <podname>
 kubectl logs --previous <podname>
 ```
 
+Cumulate logs from all the pods of the same deployment:
+
+```bash
+kubectl -n <namespace> get pods | grep <deployment-name> | cut -d ' ' -f 1 | xargs -I {} kubectl -n <namespace> logs {} --since=5h | grep 'something to search in the last 5 hours in all the pods' | less
+```
+
 ## Apply a YAML on the fly without saving a file
 
 You can paste your YAML manifests in the terminal without having to save them locally by using this syntax:
