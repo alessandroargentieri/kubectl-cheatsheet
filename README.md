@@ -728,9 +728,14 @@ $ civo loadbalancer show civo-tls-default-ingress-controller-ingress-nginx-contr
 | fb88ba8c-7c4a-4ce4-a524-c0b82aee1698 | civo-tls-default-ingress-controller-ingress-nginx-controller | round_robin | 74.220.21.171 | available | fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com | 192.168.1.3, 192.168.1.3 |
 +--------------------------------------+--------------------------------------------------------------+-------------+---------------+-----------+--------------------------------------------------+--------------------------+
 ```
-Or via `kubectl` with:
+Or via `kubectl` over the `ingress` object with:
 ```bash
 $ kubectl get ingress hello -o jsonpath={".status.loadBalancer.ingress[0].hostname"}
+fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
+```
+Or, alternatively, via `kubectl` over the `loadbalancer` service with:
+```bash
+$ kubectl get service/ingress-controller-ingress-nginx-controller-o jsonpath={".status.loadBalancer.ingress[0].hostname"}
 fb88ba8c-7c4a-4ce4-a524-c0b82aee1698.lb.civo.com
 ```
 We can compose and apply the `Certificate` manifest to be issued (reference: `https://cert-manager.io/docs/reference/api-docs/#cert-manager.io`)
