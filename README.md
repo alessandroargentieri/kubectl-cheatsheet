@@ -129,6 +129,14 @@ https://ronaknathani.com/blog/2020/08/how-a-kubernetes-pod-gets-an-ip-address/
 
 https://stackunderflow.dev/p/network-namespaces-and-docker/
 
+I pod hanno un /etc/resolv.conf (come tutte le macchine linux) che contiene l'indirizzo del DNS server: ovvero del `svc/kube-dns -n kube-system`
+che punta al deployment `deploy/coredns -n kube-system`
+
+Quindi un pod che deve chiamare il `<service>.<namespace>.svc.cluster.local` chiede al DNS server (al pod coredns-12345) che risponde con l'IP del servizio di destinazione (equivalente di `k get svc/<service> -n <namespace> -o jsonpath={.spec.clusterIP}`). Tale IP è unico nell'intero cluster (cosi come ogni pod ha un IP univoco nel cluster).
+Gli vene fornito dal DNS server questo IP del service e la chiamata esce dal pod e va nel nodo. 
+Il nodo ha le iptables configurate (da `kube-proxy` un agente di k8s installato su ogni nodo): ad ogni pod, deployment, servizio creato, kube-proxy viene triggerato per aggiornare le ip-tables di tutti i nodi del cluster: l'IP del servizio si traduce negli IP dei pod in modo randomico e l'IP del pod si traduce con l'IP del nodo che lo ospita, tutto collegato tramite il sistema di tabelle, chain e regole tipiche delle iptables (sistema di redirezionamento e firewalling dei nodi linux che compongono il cluster).
+Il CNI calico o flannel del nodo wrappa la richiesta del pod, nasconde l'indirizzo del pod richiedente e lo sostituisce all'indirizzo del nodo, sostituisce la destinazione con l'IP del nodo dove si trova il pod destinatario.
+
 ## Logging
 
 Here the ways to inspect pod logs using `kubectl`:
