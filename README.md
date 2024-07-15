@@ -48,6 +48,10 @@ You can know what port is exposed by a pod (and then port forward on it) this wa
 kubectl get pods [YOUR_PODE_NAME] --template='{{(index (index .spec.containers 0).ports 0).containerPort}}{{"\n"}}'
 kubectl port-forward [YOUR_PODE_NAME] [LOCALHOST_PORT]:[POD_PORT]
 ```
+if the pod has more than one container running in it and you want to specify the container you can:
+```bash
+kubectl -n <namespace> port-forward pods/<pod-name> <local-port>:<pod-port> --container <container-name>
+```
 
 ## Get all the pods in a specific node
 You can get all the pods deployed in a node, giving the node name:
