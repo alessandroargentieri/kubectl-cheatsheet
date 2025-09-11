@@ -40,6 +40,36 @@ kubectl get deployments webserver -o yaml > webserver_deployment.yaml
 kubectl get services webserver-lb -o yaml > webserver_service.yaml
 ```
 
+## Install a probe pod into a specific namespace
+You can have a long-lasting probe which needs to be deleted manually and accessed via `kubectl exec -it`:
+```bash
+kubectl -n mynamespace run ubuntu  --restart=Never --image=ubuntu -- bash -c 'apt-get update && apt-get install curl -y; tail -f /dev/null'
+kubectl -n mynamespace exec -it ubuntu -- bash
+```
+or you can have a probe which is accessed immediately and deleted right after you exit from the bash:
+```bash
+kubectl -n mynamespace run -it probe --image=probe --restart=Never --rm -- bash -c 'apt-get update && apt-get install curl -y; bash'
+```
+In both cases, if you want to `curl` another pod in the same namespace (to reach, for example the `/metrics` endpoint) you can:
+```
+# fully qualified k8s-internal DNS name (via the service object)
+curl http://myservice.mynamespace.svc.cluster.local:9090/metrics
+
+# short name  (via the service object):
+curl http://myservice:9090/metrics
+
+# example on how to reach the kubernetes service
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+curl -H "Authorization: Bearer $TOKEN" http://kubernetes.default.svc.cluster.local/healthz
+
+# reaching a pod (the DNS name is disabled so you have to use the pod cluster IP)
+# to be done on a different terminal
+kubectl -n mynamespace get pod mypod -o jsonpath='{.status.podIP}'
+10.71.0.5
+# in the probe pod bash shell
+curl http://10.71.0.5:9090/metrics
+```
+
 ## Get the exported port for a pod
 
 You can know what port is exposed by a pod (and then port forward on it) this way:
