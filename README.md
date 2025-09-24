@@ -570,6 +570,19 @@ REDIS_PASS=e0ub6jEsxHmYAdLe149Zaqh6ohvLTP
 kubectl cp redis-0:/data/dump.rdb ./redis-dump.rdb
 ```
 
+# Check the pod stats (RAM, CPU, Disk) with kubectl (without having to install `top` = metrics server):
+```bash
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/namespaces/<namespace>/pods/<pod-name>
+```
+If you install the metrics server with:
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+instead, you can use the `top` command:
+```bash
+kubectl top pod <pod-name> -n <namespace>
+```
+
 # Expose cluster with the official dashboard:
 
 Create the dashboard in your cluster:
